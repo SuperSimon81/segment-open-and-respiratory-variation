@@ -1,6 +1,8 @@
 # segment-open -- Segment source distribution
 
-Tbis is a fork of Segment-open containing the Mitral and Tricuspid Respiratory Variation plugin
+This is a fork of Segment-open containing the Mitral and Tricuspid Respiratory Variation plugin
+
+![lvimage](example.jpg)
 
 ![lvimage](docs/images/titlepage.jpg)
 
