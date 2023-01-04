@@ -12,8 +12,8 @@ switch fcn
 		%Segment with versions >1.636 calls with two input arguments where
 		%the second input argument is the handle to the menu item.
 		
-		uimenu(varargin{1},'Label','RAMP2022','Callback','plugin_RAMP(''init'')');
-		varargout{1} = 'RAMP';
+		uimenu(varargin{1},'Label','Mitral and Tricuspid Respiratory Variation','Callback','plugin_RAMP(''init'')');
+		varargout{1} = 'Mitral and Tricuspid Respiratory Variation';
 		%    set(varargin{1},'init','');
 	case 'getdependencies'
 		%Here: List all depending files. This is required if your plugin should
@@ -166,17 +166,6 @@ end
 
 %DATA.updateaxestables('flow',nom,nop);
 
-%Code relating to ROI display in bottom right panel
-RAMP.ROI(1).X = RAMP.ROI(1).X;
-RAMP.ROI(1).Y = RAMP.ROI(1).Y;
-
-RAMP.ROI(2).X = RAMP.ROI(2).X;
-RAMP.ROI(2).Y = RAMP.ROI(2).Y;
-
-RAMP.xmin = round(min(RAMP.ROI(2).X(:,1)))-10;
-RAMP.xmax = round(max(RAMP.ROI(1).X(:,1)))+10;
-RAMP.ymin = round(min(RAMP.ROI(2).Y(:,1)))-5;
-RAMP.ymax = round(max(RAMP.ROI(1).Y(:,1)))+5;
 end
 
 function ok = init(no)
@@ -264,11 +253,15 @@ gui.numrois = length(rois2take);
 
 %Warningmessage
 %mywarning('Experimental feature currently being developed by Karolinska Institutet',DATA.GUI.Segment);
+
 set(gcf,'color',[0.9 0.9 0.9]);
 set([gui.handles.text153 gui.handles.text154 gui.handles.uipanel10 gui.handles.uipanel11 gui.handles.mit_samples gui.handles.mit_slider gui.handles.tri_slider gui.handles.tri_samples gui.handles.checkbox_kmax_line gui.handles.checkbox_beat_seg],'BackgroundColor',[0.9 0.9 0.9]);
 set([gui.handles.text153 gui.handles.text154 gui.handles.uipanel10 gui.handles.uipanel11 gui.handles.mit_samples gui.handles.mit_slider gui.handles.tri_slider gui.handles.tri_samples gui.handles.checkbox_kmax_line gui.handles.checkbox_beat_seg],'ForegroundColor',[0 0 0]);
 
+
 calculate_flow();
+
+%Format the table of results
 tab = cell(9,2);
 tab(1,1) = {'Mitral'};
 tab(2,1) = {'Vmax (m/s)'};
@@ -279,25 +272,27 @@ tab(6,1) = {'Tricuspid'};
 tab(7,1) = {'Vmax (m/s)'};
 tab(8,1) = {'Vmin (m/s)'};
 tab(9,1) = {'Variation'};
-
 set(gui.handles.table, 'Data', tab);
 set(gui.handles.table, 'ColumnWidth',{75,65});
 
 colormap(gray);
 
 %Some settings related to ylim and clim
-percentile = 99; %Set the percentile of values to be max in colormap.
+
 ymin = 40;
 ymax = 164;
 gui.ymin = ymin;
 gui.ymax = ymax;
 
-%mitral
+%Construct flow histogram image to display in mitral axes
 mitral_image = flipud(flow_histogram_no_low(RAMP.mitral_velocity));
+
+%Calculate percentiles, there will always be an outlier that will mess up
+%the contrast in the histogram. 
+percentile = 99; %Set the percentile of values to be max in colormap.
 mit_prctl = prctile(mitral_image,percentile,'all');
 axes(gui.handles.mit_axes);
 clims=[255-mit_prctl 255]; %Black on white, instead of white on black
-
 gui.mit_image = imagesc(255-mitral_image(:,:),clims);
 
 %tricuspid
@@ -305,8 +300,8 @@ tricuspid_image = flipud(flow_histogram_no_low(RAMP.tricuspid_velocity));
 tri_prctl = prctile(tricuspid_image,percentile,'all');
 clims=[255-tri_prctl 255]; %Black on white, instead of white on black
 axes(gui.handles.tri_axes);
-
 gui.tri_image = imagesc(255-tricuspid_image(:,:),clims);
+
 set([gui.mit_image gui.tri_image],'PickableParts','none');
 set([gui.mit_image gui.tri_image],'HitTest','off');
 %Labels
@@ -325,14 +320,20 @@ set([gui.handles.mit_axes gui.handles.tri_axes],'YTickLabel',1:-0.2:-1);
 set([gui.handles.mit_axes gui.handles.tri_axes],'XTick',linspace(0,625,31));
 set([gui.handles.mit_axes gui.handles.tri_axes],'XTickLabel',0:30);
 
-
+%Callbakcs for visibility panel
 set([gui.handles.checkbox_kmax_line gui.handles.checkbox_beat_seg],'Callback',@checkboxes_callback);
+
+
+%Draw magnitude image and formatting
 gui.magnitude = imagesc(SET(nom).IM(:,:,1),'Parent',gui.handles.mag_axes);
 title(gui.handles.mag_axes,'Magnitude','FontSize',18,'fontweight','bold');
 set([gui.handles.mag_axes],'XTickLabel',[]);
 set([gui.handles.mag_axes],'YTickLabel',[]);
 
+%Draw the mmode image which is constructed by simple slicing of
+%SET(nom).IM. The value 100 is the x-value of the slice. 
 gui.mmd = imagesc(squeeze(SET(nom).IM(:,100,:)),'Parent',gui.handles.mmd_axes);
+%Draw the line
 RAMP.overview_line = line(gui.handles.mag_axes,[100 100],[0 300],'LineWidth',2,'color',[1 1 0]); 
 
 ylabel(gui.handles.mmd_axes,'Distance (pixels)','fontsize',14);
@@ -345,7 +346,7 @@ hold(gui.handles.mit_axes,'on');
 hold(gui.handles.tri_axes,'on');
 hold(gui.handles.mmd_axes,'on');
 
-%Calculate and plot the red velocity line in mit_axes
+%Calculate and plot the black velocity-time line in mit_axes and tri_axes
 mit_curve = maxk_curve(RAMP.mitral_velocity,10);
 tri_curve = maxk_curve(RAMP.tricuspid_velocity,10);
 
