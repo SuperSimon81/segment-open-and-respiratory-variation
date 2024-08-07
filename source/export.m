@@ -909,24 +909,24 @@ for tloop=1:SET(no).TSize
 end
 mywaitbarclose(h);
 
-if ~DATA.Testing
-  s = myinputdlg({'Number of frames per second'},'fps',1,{sprintf('%d',15)});
-else
-  s{1} = popfrombuffer('String');
-end
-if isempty(s)
-  myfailed('Invalid fps.',DATA.GUI.Segment);
-  return;
-else
-  [fps,ok] = str2num(s{1}); %#ok<ST2NM>
-  if not(ok)
-    myfailed('Invalid fps.',DATA.GUI.Segment);
-    return;
-  end
-end
+%%if ~DATA.Testing
+ %% s = myinputdlg({'Number of frames per second'},'fps',1,{sprintf('%d',15)});
+%%else
+ %% s{1} = popfrombuffer('String');
+%%end
+%%if isempty(s)
+ %% myfailed('Invalid fps.',DATA.GUI.Segment);
+  %%return;
+%%else
+ %% [fps,ok] = str2num(s{1}); %#ok<ST2NM>
+  %%if not(ok)
+   %% myfailed('Invalid fps.',DATA.GUI.Segment);
+    %%return;
+  %%end
+%%end
 
 %Call to save to disk
-ok = exportsavemovie(mov,1,size(temp,2),1,size(temp,1),fps);
+ok = exportsavemovie(mov,1,size(temp,2),1,size(temp,1),25);
 myworkoff;
 
 if ok
