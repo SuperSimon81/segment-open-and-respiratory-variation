@@ -39,132 +39,83 @@ end;
 end
 
 function calculate_flow()
-%-----------------------
-%Calculate flow data
-global DATA SET RAMP 
-gui = DATA.GUI.RAMP;
-RAMP=[];
-
-nom = gui.nom;
-nop = gui.nop;
-rois2take = gui.rois2take;
-numrois = gui.numrois;
-
-if (~gui.resamped)
-	%gui.velocity = gui.velmean;
-	gui.velmean = NaN(SET(nom).TSize,numrois);
-	gui.velstd = gui.velmean;
-	gui.velmax = gui.velmean;
-	gui.velmin = gui.velmean;
-	gui.kenergy = gui.velmean;
-	gui.area = gui.velmean;
-	gui.netflow = gui.velmean;
-	gui.posflow = gui.velmean;
-	%gui.negflow = gui.velmean;
-	gui.phasecorrstring = '';
-	if ~isempty(SET(nop).Flow.PhaseCorr)
-		if ~isfield(SET(nop).Flow,'PhaseCorrTimeResolved')
-			mywarning('Incompatible eddy current correction. Correction reset.',DATA.GUI.Segment);
-			SET(nop).Flow.PhaseCorr = [];
-			gui.phasecorrstring = '';
-		else
-			if SET(nop).Flow.PhaseCorrTimeResolved
-				gui.phasecorrstring = '[Time-resolved eddy current compensation applied]';
-			else
-				gui.phasecorrstring = '[Stationary eddy current compensation applied]';
-			end;
-		end;
-	end;
-	warnedempty = false;
-	a=SET(nom).TSize*2;
-    h = waitbar(0,'Calculating flow.');
-    set(h,'visible','off');
-	myadjust(h,DATA.GUI.Segment);
-	set(h,'visible','on');
-    counter = 0;
+    global DATA SET RAMP 
+    gui = DATA.GUI.RAMP;
+    RAMP = [];
     
-	RAMP.ROI(1) = SET(nom).Roi(1);
-	RAMP.ROI(2) = SET(nom).Roi(2);
-	
-	for rloop = 1:numrois
-		for tloop = SET(nom).Roi(rois2take(rloop)).T
-            counter = counter + 1;
-            waitbar(counter/a,h);
-			%Create mask
-			mask = logical(segment('createmask',...
-				gui.outsize,...
-				SET(nom).Roi(rois2take(rloop)).Y(:,tloop),...
-				SET(nom).Roi(rois2take(rloop)).X(:,tloop)));
-			
-			%Extract phase image
-			temp = SET(nop).IM(:,:,tloop,SET(nom).Roi(rois2take(rloop)).Z);
-			
-			%If empty phasecorr, the do not add phase correction.
-			if isempty(SET(nop).Flow.PhaseCorr)
-				veldata = SET(nom).Roi(rois2take(rloop)).Sign*(temp-0.5)*2*SET(nop).VENC;
-				
-			else
-				%Phase correction
-				if SET(nop).Flow.PhaseCorrTimeResolved
-					%Time resolved phase correction
-					veldata = SET(nom).Roi(rois2take(rloop)).Sign*...
-						(temp-0.5-SET(nop).Flow.PhaseCorr(:,:,tloop,SET(nom).Roi(rois2take(rloop)).Z))*2*SET(nop).VENC;
-				else
-					%Stationary phase correction
-					veldata = SET(nom).Roi(rois2take(rloop)).Sign*...
-						(temp-0.5-SET(nop).Flow.PhaseCorr(:,:,1,SET(nom).Roi(rois2take(rloop)).Z))*2*SET(nop).VENC;
-					
-				end;
-			end;
-							
-            RAMP.velocity_unmasked(:,:,tloop) = veldata;
-			
-			veldata = veldata(mask);
-			unaltered_vel = temp(mask);
-			
-			if isempty(veldata)
-				if not(warnedempty)
-					mywarning('Empty ROI. Please try again',DATA.GUI.Segment);
-				end;
-				warnedempty = true;
+    nom = gui.nom;
+    nop = gui.nop;
+    numrois = gui.numrois;
+    rois2take = gui.rois2take;
+
+    if (~gui.resamped)
+        gui.velmean = NaN(SET(nom).TSize, numrois);
+        gui.velstd = gui.velmean;
+        gui.velmax = gui.velmean;
+        gui.velmin = gui.velmean;
+        gui.kenergy = gui.velmean;
+        gui.area = gui.velmean;
+        gui.netflow = gui.velmean;
+        gui.posflow = gui.velmean;
+        gui.phasecorrstring = '';
+        
+        if ~isempty(SET(nop).Flow.PhaseCorr) && isfield(SET(nop).Flow, 'PhaseCorrTimeResolved')
+            if SET(nop).Flow.PhaseCorrTimeResolved
+                gui.phasecorrstring = '[Time-resolved eddy current compensation applied]';
             else
-				
-				if(rloop == 1) %Mitral
-					
-                    RAMP.mitral_velocity(tloop,:) = unaltered_vel ;%*SET(nom).Roi(rois2take(rloop)).Sign;
-                 
-				end
-				
-				if(rloop == 2) %Tricuspid
-					
-					RAMP.tricuspid_velocity(tloop,:) = unaltered_vel;%*SET(nom).Roi(rois2take(rloop)).Sign;
-                  				
-                end;
-			end;
-           
-		end;
-		
-	
-		
-	end;
-	
-	close(h);
-	
-	timeframes = SET(nom).StartAnalysis:SET(nom).EndAnalysis;
-	
-	TIncr = SET(nom).TIncr;
-	TSize = SET(nom).TSize;
-else
-	gui.phasecorrstring = '';
-	% 	StartAnalysis = 1;
-	% 	EndAnalysis = length(gui.t);
-	timeframes = 1:gui.tsize;
-	TIncr = gui.TIncr;
-	TSize = gui.tsize;
-end
-
-%DATA.updateaxestables('flow',nom,nop);
-
+                gui.phasecorrstring = '[Stationary eddy current compensation applied]';
+            end
+        end
+        
+        warnedempty = false;
+        a = SET(nom).TSize * 2;
+        h = waitbar(0, 'Calculating flow.');
+        set(h, 'visible', 'off');
+        myadjust(h, DATA.GUI.Segment);
+        set(h, 'visible', 'on');
+        counter = 0;
+        
+        RAMP.ROI = SET(nom).Roi(1:2);
+        
+        for rloop = 1:numrois
+            for tloop = SET(nom).Roi(rois2take(rloop)).T
+                counter = counter + 1;
+                waitbar(counter/a, h);
+                
+                mask = logical(segment('createmask', gui.outsize, SET(nom).Roi(rois2take(rloop)).Y(:,tloop), SET(nom).Roi(rois2take(rloop)).X(:,tloop)));
+                temp = SET(nop).IM(:,:,tloop,SET(nom).Roi(rois2take(rloop)).Z);
+                
+                veldata = SET(nom).Roi(rois2take(rloop)).Sign * (temp - 0.5) * 2 * SET(nop).VENC;
+                
+                if ~isempty(SET(nop).Flow.PhaseCorr)
+                    if SET(nop).Flow.PhaseCorrTimeResolved
+                        correction = SET(nop).Flow.PhaseCorr(:,:,tloop,SET(nom).Roi(rois2take(rloop)).Z);
+                    else
+                        correction = SET(nop).Flow.PhaseCorr(:,:,1,SET(nom).Roi(rois2take(rloop)).Z);
+                    end
+                    veldata = SET(nom).Roi(rois2take(rloop)).Sign * (temp - 0.5 - correction) * 2 * SET(nop).VENC;
+                end
+                
+                RAMP.velocity_unmasked(:,:,tloop) = veldata;
+                veldata = veldata(mask);
+                
+                if isempty(veldata) && not(warnedempty)
+                    mywarning('Empty ROI. Please try again', DATA.GUI.Segment);
+                    warnedempty = true;
+                else
+                    if rloop == 1
+                        RAMP.mitral_velocity(tloop, :) = temp(mask);
+                    elseif rloop == 2
+                        RAMP.tricuspid_velocity(tloop, :) = temp(mask);
+                    end
+                end
+            end
+        end
+        close(h);
+        timeframes = SET(nom).StartAnalysis : SET(nom).EndAnalysis;
+    else
+        timeframes = 1 : gui.tsize;
+    end
 end
 
 function ok = init(no)
@@ -422,7 +373,6 @@ DATA.GUI.RAMP = gui;
 ok = true;
 end
 
-
 function splits_callback(h,event)
 global RAMP DATA
 gui = DATA.GUI.RAMP;
@@ -578,7 +528,7 @@ function update_table()
     gui.clip_array=[];
    
     %First column is the OrigFileName from Segment file format
-    gui.clip_array(1)=str2num(SET(1).OrigFileName);
+   % gui.clip_array(1)=str2num(SET(1).OrigFileName);
     
     mit_max = -(RAMP.mit_max_val-128)/128;
     mit_min = -(RAMP.mit_min_val-128)/128;
