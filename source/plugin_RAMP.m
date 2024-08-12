@@ -228,8 +228,8 @@ for i=1:length(RAMP.tricuspid.peaks)
 end
 
 set([gui.handles.mit_axes gui.handles.tri_axes],'ylim',[ymin ymax]);
-[RAMP.mitral.min_val,RAMP.mitral.max_val,RAMP.mitral.min_ind,RAMP.mitral.max_ind]=get_maxmin(RAMP.mitral.peaks);
-[RAMP.tricuspid.min_val,RAMP.tricuspid.max_val,RAMP.tricuspid.min_ind,RAMP.tricuspid.max_ind]=get_maxmin(RAMP.tricuspid.peaks);
+[RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
+[RAMP.tricuspid.max_val,RAMP.tricuspid.min_val,RAMP.tricuspid.max_ind,RAMP.tricuspid.min_ind]=get_maxmin(RAMP.tricuspid.peaks);
 
 set(gui.mit_peak(RAMP.mitral.max_ind),'MarkerSize',10);
 set(gui.mit_peak(RAMP.mitral.min_ind),'MarkerSize',10);
@@ -674,8 +674,8 @@ set(gcf,"WindowButtonUpFcn", @click)
         end
 
         %    set([gui.handles.mit_axes gui.handles.tri_axes],'ylim',[ymin ymax]);
-        [RAMP.mitral.min_val,RAMP.mitral.max_val,RAMP.mitral.min_ind,RAMP.mitral.max_ind]=get_maxmin(RAMP.mitral.peaks);
-        [RAMP.tricuspid.min_val,RAMP.tricuspid.max_val,RAMP.tricuspid.min_ind,RAMP.tricuspid.max_ind]=get_maxmin(RAMP.tricuspid.peaks);
+        [RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
+        [RAMP.tricuspid.max_val,RAMP.tricuspid.min_val,RAMP.tricuspid.max_ind,RAMP.tricuspid.min_ind]=get_maxmin(RAMP.tricuspid.peaks);
 
         set(gui.mit_peak(RAMP.mitral.max_ind),'MarkerSize',10);
         set(gui.mit_peak(RAMP.mitral.min_ind),'MarkerSize',10);
@@ -720,8 +720,8 @@ if x>RAMP.splits(1) && x<RAMP.splits(end)
     end
 end
 
-[RAMP.mitral.min_val,RAMP.mitral.max_val,RAMP.mitral.min_ind,RAMP.mitral.max_ind]=get_maxmin(RAMP.mitral.peaks);
-[RAMP.tricuspid.min_val,RAMP.tricuspid.max_val,RAMP.tricuspid.min_ind,RAMP.tricuspid.max_ind]=get_maxmin(RAMP.tricuspid.peaks);
+[RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
+[RAMP.tricuspid.max_val,RAMP.tricuspid.min_val,RAMP.tricuspid.max_ind,RAMP.tricuspid.min_ind]=get_maxmin(RAMP.tricuspid.peaks);
 
 set([gui.mit_peak(:); gui.tri_peak(:)], 'MarkerSize', 5);
 set([gui.mit_peak(RAMP.mitral.max_ind), gui.mit_peak(RAMP.mitral.min_ind), gui.tri_peak(RAMP.tricuspid.max_ind), gui.tri_peak(RAMP.tricuspid.min_ind)], 'MarkerSize', 10);
@@ -850,9 +850,9 @@ gui.clip_array(1)=str2num(SET(1).OrigFileName);
 %SET(1).OrigFileName
 
 mit_max = (RAMP.mitral.peaks(RAMP.mitral.max_ind));
-mit_min = -(RAMP.mitral.min_val-128)/128;
-tri_max = -(RAMP.tricuspid.max_val-128)/128;
-tri_min = -(RAMP.tricuspid.min_val-128)/128;
+mit_min = (RAMP.mitral.peaks(RAMP.mitral.min_ind));
+tri_max = RAMP.tricuspid.max_val;
+tri_min = RAMP.tricuspid.min_val;
 
 %mitral
 gui.clip_array(2)=mit_max;
