@@ -97,8 +97,8 @@ calculate_flow();
 
 RAMP.gui = mygui('plugin_RAMP.fig');
 gui = RAMP.gui;
-
-set(gui.fig,'Name',SET(1).OrigFileName);
+RAMP.filename= SET(1).OrigFileName;
+set(gui.fig,'Name',RAMP.filename);
 
 %Set some gui colors
 set(findall(gcf, 'Style', 'pushbutton'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
@@ -129,8 +129,8 @@ mitral_spectral_plot = flipud(spectral_plot(RAMP.mitral.velocity));
 hpercentile = 98; 
 lpercentile = 1;
 
-hmit_prctl = prctile(mitral_spectral_plot,hpercentile,'all')
-lmit_prctl = prctile(mitral_spectral_plot,lpercentile,'all')
+hmit_prctl = prctile(mitral_spectral_plot,hpercentile,'all');
+lmit_prctl = prctile(mitral_spectral_plot,lpercentile,'all');
 
 axes(gui.handles.mit_axes);
 clims=[0 hmit_prctl]; %Black on white, instead of white on black
@@ -390,7 +390,7 @@ for i = 1:length(velocity)
 end
 
 % Calculate the threshold as the mean of the modified velocity plus an offset.
-m = mean(velocity);
+m = mean(velocity)+mean(velocity)/4;
 
 % Adjust the velocity such that all values below the threshold m are set to m.
 for i = 1:length(velocity)
@@ -419,7 +419,8 @@ for i = 1:size(ewaves, 2)
         peaks(i) = -1; % assign -1 to indicate no peak.
         inds(i) = t - 9; % Assign an index which is adjusted from the start by -9. 
     else
-        [maxv, maxind] = max(p); % Find the peak with the maximum prominence as defined in findpeaks().
+        %[maxv, maxind] = max(p); % Find the peak with the maximum prominence as defined in findpeaks().
+        [maxv,maxind] = min(locs);
         peak_e_ind = locs(maxind); % Find the index of this peak within the segment.
         peaks(i) = ewaves{i}(peak_e_ind); % Calculate the peak value 
         inds(i) = peak_e_ind + t - 1; % Adjust the index relative to the whole velocity array.
@@ -632,11 +633,19 @@ end
 %Callback functions
 function button_debug_callback(varargin)
 global RAMP
-[RAMP.exploc RAMP.insploc RAMP.inflections RAMP.respiration] = calculate_respiratory_curve();
 
-[max_type min_type nr_max_insp nr_max_exp nr_min_insp nr_min_exp]=consolidate_results(RAMP.mitral.peaks,RAMP.mitral.indices,RAMP.mitral.min_ind,RAMP.mitral.max_ind,RAMP.inflections,RAMP.respiration);
+%hFig = findobj('type', 'figure', 'name', 'YourFigureName');  % Replace 'YourFigureName' with the actual name if known
 
+% Capture the figure with getframe
+frame = getframe(RAMP.gui.fig);
 
+% Convert the frame to an image
+image = frame2im(frame);
+
+target = '/Users/simon/Documents/SoftwareArticleRAMP/analys20240810/';
+fullFilePath = [target, RAMP.filename,'.png']
+% Save the image to a file
+imwrite(image, fullFilePath);
 
 end
 function splits_callback(h,~)
@@ -839,7 +848,7 @@ table_contents = get(gui.handles.table,'Data');
 
 
 %First column is the OrigFileName from Segment file format as a number
-gui.clip_array(1)=str2num(SET(1).OrigFileName);
+gui.clip_array(1)=str2num(RAMP.filename);
 
 mit_max = RAMP.mitral.max_val;
 mit_min = RAMP.mitral.min_val;
