@@ -103,23 +103,22 @@ set(gui.fig,'Name',RAMP.filename);
 %Set some gui colors
 set(findall(gcf, 'Style', 'pushbutton'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
 set(findall(gcf, 'Style', 'checkbox'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
-set(gui.handles.uipanel11,'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]);  
+set(findall(gcf, 'Style', 'text'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]);
+set(findall(gcf, 'Style', 'edit'),'BackgroundColor',[1 1 1],'ForegroundColor',[0 0 0]);
+set([gui.handles.panel_visibility, gui.handles.panel_results],'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
 set(gcf,'color',[0.9 0.9 0.9]);
-
+set(gui.handles.result_mitral_variation,'String','asd');
 %Warningmessage, might be needed if compiled
 %mywarning('Experimental feature being developed by Karolinska Institutet',DATA.GUI.Segment);
 
-%Format the table of results
-tab = cell(9,2);
-tab(:,1) = {'Mitral'; 'Vmax (m/s)'; 'Vmin (m/s)'; 'Variation'; ''; 'Tricuspid'; 'Vmax (m/s)'; 'Vmin (m/s)'; 'Variation'};
-set(gui.handles.table, 'Data', tab, 'ColumnWidth', {75, 65});
+
 colormap(gray);
 
 %Some settings related to ylim and clim
 ymin = -0.4;
 ymax = 1;
-gui.ymin = ((ymin+2)*512)/4;
-gui.ymax = ((ymax+2)*512)/4;
+RAMP.ymin = ((ymin+2)*512)/4;
+RAMP.ymax = ((ymax+2)*512)/4;
 
 %Construct spectral plot image to display in mitral axes
 mitral_spectral_plot = spectral_plot(RAMP.mitral.velocity);
@@ -150,7 +149,6 @@ gui.tri_image = imagesc(tricuspid_spectral_plot(:,:),clims);
 set(gui.handles.tri_axes,'YDir','normal');
 colormap(gui.handles.tri_axes,flipud(gray));
 
-
 set([gui.mit_image gui.tri_image],'PickableParts','none');
 set([gui.mit_image gui.tri_image],'HitTest','off');
 
@@ -168,10 +166,8 @@ title(gui.handles.tri_axes,'Tricuspid inflow velocity','FontSize',18,'fontweight
 set(findall(gcf, 'Style', 'checkbox'),'Callback',@checkboxes_callback);
 
 %debug
-set(gui.handles.button_debug,'Callback',@button_debug_callback);
-set(gui.handles.button_debug,'Visible',1);
-
-set(gui.handles.button_clipboard,'Callback',@button_clipboard_callback);
+%set(gui.handles.button_debug,'Callback',@button_debug_callback);
+%set(gui.handles.button_clipboard,'Callback',@button_clipboard_callback);
 
 
 %Draw magnitude image and formatting
@@ -196,7 +192,7 @@ hold(gui.handles.mmd_axes,'on');
 
 %Calculate and plot the black velocity-time line in mit_axes and tri_axes
 %The percentile is set to 95 empirically proved to work well. It can be
-%discussed. Observed differences are around 1-2 %-units in the calculated variation.
+%discussed. Observed differences are around 1-2 %-units in the derived variation.
 RAMP.mitral.curve = max_percentile_curve(RAMP.mitral.velocity,95);
 RAMP.tricuspid.curve = max_percentile_curve(RAMP.tricuspid.velocity,95);
 
@@ -204,7 +200,7 @@ gui.mit_curve_plot = plot(256+128*RAMP.mitral.curve,'color','black','LineWidth',
 gui.tri_curve_plot = plot(256+128*RAMP.tricuspid.curve,'color','black','LineWidth',1,'Parent',gui.handles.tri_axes,'PickableParts','none','Visible',get(gui.handles.checkbox_vt_curve,'Value'));
 
 %tick settings
-set([gui.handles.mit_axes gui.handles.tri_axes],'YTick',linspace(gui.ymin,gui.ymax,7));
+set([gui.handles.mit_axes gui.handles.tri_axes],'YTick',linspace(RAMP.ymin,RAMP.ymax,7));
 set([gui.handles.mit_axes gui.handles.tri_axes],'YTickLabel',ymin:0.2:ymax);
 set([gui.handles.mit_axes gui.handles.tri_axes],'XTick',linspace(0,625,31));
 set([gui.handles.mit_axes gui.handles.tri_axes],'XTickLabel',0:30);
@@ -226,7 +222,7 @@ for i=1:length(RAMP.mitral.peaks)
     gui.handles.mit_axes,'UserData',i,'Visible',get(gui.handles.checkbox_peaks,'Value'));
     set(gui.mit_peak(i),'ButtonDownFcn', @peak_callback)
     %optional line in mmode for every peak
-    gui.mmode_lines(i) = plot([RAMP.mitral.indices(i) RAMP.mitral.indices(i)],[0,256],'Parent',gui.handles.mmd_axes,'color','w','LineWidth',2,'LineStyle',':','Visible',get(gui.handles.checkbox_mmode_helplines,'Value'));
+    %gui.mmode_lines(i) = plot([RAMP.mitral.indices(i) RAMP.mitral.indices(i)],[0,256],'Parent',gui.handles.mmd_axes,'color','w','LineWidth',2,'LineStyle',':','Visible',get(gui.handles.checkbox_mmode_helplines,'Value'));
 end
 
 
@@ -240,7 +236,7 @@ for i=1:length(RAMP.tricuspid.peaks)
 
 end
 
-set([gui.handles.mit_axes gui.handles.tri_axes],'ylim',[gui.ymin gui.ymax]);
+set([gui.handles.mit_axes gui.handles.tri_axes],'ylim',[RAMP.ymin RAMP.ymax]);
 [RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
 [RAMP.tricuspid.max_val,RAMP.tricuspid.min_val,RAMP.tricuspid.max_ind,RAMP.tricuspid.min_ind]=get_maxmin(RAMP.tricuspid.peaks);
 
@@ -1007,32 +1003,32 @@ function update_table()
 global RAMP SET
 gui = RAMP.gui;
 
-gui.clip_array=[];
+RAMP.clip_array=[];
 %[RAMP.mitral.max_type RAMP.mitral.min_type RAMP.mitral.nr_max_insp RAMP.mitral.nr_max_exp RAMP.mitral.nr_min_insp RAMP.mitral.nr_min_exp]=consolidate_results(RAMP.mitral.peaks,RAMP.mitral.indices,RAMP.mitral.min_ind,RAMP.mitral.max_ind,RAMP.inflections,RAMP.respiration);
 
 
-% gui.clip_array(5) = RAMP.mitral.max_type;
-% gui.clip_array(6) = RAMP.mitral.min_type;
-% gui.clip_array(7) = RAMP.mitral.nr_max_insp;
-% gui.clip_array(8) = RAMP.mitral.nr_max_exp;
-% gui.clip_array(9) = RAMP.mitral.nr_min_insp;
-% gui.clip_array(10) = RAMP.mitral.nr_min_exp;
+% RAMP.clip_array(5) = RAMP.mitral.max_type;
+% RAMP.clip_array(6) = RAMP.mitral.min_type;
+% RAMP.clip_array(7) = RAMP.mitral.nr_max_insp;
+% RAMP.clip_array(8) = RAMP.mitral.nr_max_exp;
+% RAMP.clip_array(9) = RAMP.mitral.nr_min_insp;
+% RAMP.clip_array(10) = RAMP.mitral.nr_min_exp;
 % 
 % [RAMP.tricuspid.max_type RAMP.tricuspid.min_type RAMP.tricuspid.nr_max_insp RAMP.tricuspid.nr_max_exp RAMP.tricuspid.nr_min_insp RAMP.tricuspid.nr_min_exp]=consolidate_results(RAMP.tricuspid.peaks,RAMP.tricuspid.indices,RAMP.tricuspid.min_ind,RAMP.tricuspid.max_ind,RAMP.inflections,RAMP.respiration);
-% gui.clip_array(14) = RAMP.tricuspid.max_type;
-% gui.clip_array(15) = RAMP.tricuspid.min_type;
-% gui.clip_array(16) = RAMP.tricuspid.nr_max_insp;
-% gui.clip_array(17) = RAMP.tricuspid.nr_max_exp;
-% gui.clip_array(18) = RAMP.tricuspid.nr_min_insp;
-% gui.clip_array(19) = RAMP.tricuspid.nr_min_exp;
+% RAMP.clip_array(14) = RAMP.tricuspid.max_type;
+% RAMP.clip_array(15) = RAMP.tricuspid.min_type;
+% RAMP.clip_array(16) = RAMP.tricuspid.nr_max_insp;
+% RAMP.clip_array(17) = RAMP.tricuspid.nr_max_exp;
+% RAMP.clip_array(18) = RAMP.tricuspid.nr_min_insp;
+% RAMP.clip_array(19) = RAMP.tricuspid.nr_min_exp;
 
-table_contents = get(gui.handles.table,'Data');
+%table_contents = get(gui.handles.table,'Data');
 
 %Clipboard array to be exported
 
 
 %First column is the OrigFileName from Segment file format as a number
-%gui.clip_array(1)=str2num(RAMP.filename);
+%RAMP.clip_array(1)=str2num(RAMP.filename);
 
 mit_max = RAMP.mitral.max_val;
 mit_min = RAMP.mitral.min_val;
@@ -1040,35 +1036,46 @@ tri_max = RAMP.tricuspid.max_val;
 tri_min = RAMP.tricuspid.min_val;
 
 %mitral
-gui.clip_array(2)=mit_max;
-gui.clip_array(3)=mit_min;
-gui.clip_array(4)=round((mit_max-mit_min)/mit_max*100);
+RAMP.clip_array(2)=mit_max;
+RAMP.clip_array(3)=mit_min;
+RAMP.clip_array(4)=round((mit_max-mit_min)/mit_max*100);
+RAMP.clip_array(5)=tri_max;
+RAMP.clip_array(6)=tri_min;
+RAMP.clip_array(7)=round((tri_max-tri_min)/tri_max*100);
 
-table_contents(2,2) = {sprintf('%.2f',gui.clip_array(2))};
-table_contents(3,2) = {sprintf('%.2f',gui.clip_array(3))};
-table_contents(4,2) = {sprintf('%d %%',gui.clip_array(4))};
 
-gui.clip_array(5)=tri_max;
-gui.clip_array(6)=tri_min;
-gui.clip_array(7)=round((tri_max-tri_min)/tri_max*100);
-table_contents(7,2) = {sprintf('%.2f',gui.clip_array(5))};
-table_contents(8,2) = {sprintf('%.2f',gui.clip_array(6))};
-table_contents(9,2) = {sprintf('%d %%',gui.clip_array(7))};
-set(gui.handles.table,'Data',table_contents);
+set(gui.handles.result_mitral_vmax,'String',sprintf('%.2f',mit_max));
+set(gui.handles.result_mitral_vmin,'String',sprintf('%.2f',mit_min));
+set(gui.handles.result_mitral_variation,'String',sprintf('%d%%',RAMP.clip_array(4)));
+
+set(gui.handles.result_tricuspid_vmax,'String',sprintf('%.2f',tri_max));
+set(gui.handles.result_tricuspid_vmin,'String',sprintf('%.2f',tri_min));
+set(gui.handles.result_tricuspid_variation,'String',sprintf('%d%%',RAMP.clip_array(7)));
+
+
+%gui.handles.result_mitral_variation = sprintf('%.2f',RAMP.clip_array(4));
+%table_contents(2,2) = {sprintf('%.2f',RAMP.clip_array(2))};
+%table_contents(3,2) = {sprintf('%.2f',RAMP.clip_array(3))};
+%table_contents(4,2) = {sprintf('%d %%',RAMP.clip_array(4))};
+
+
+%table_contents(7,2) = {sprintf('%.2f',RAMP.clip_array(5))};
+%table_contents(8,2) = {sprintf('%.2f',RAMP.clip_array(6))};
+%table_contents(9,2) = {sprintf('%d %%',RAMP.clip_array(7))};
 
 % %The individual peaks
 % 
 % %for i=1:length(RAMP.mitral.peaks)
 % 
-% %    gui.clip_array(19%+i) = RAMP.mitral.peaks(i);
+% %    RAMP.clip_array(19%+i) = RAMP.mitral.peaks(i);
 % %end
 % 
 % %for i=1:length(RAMP.tricuspid.peaks)
 % 
-%     gui.clip_array(19+length(RAMP.mitral.peaks)+i+1) = RAMP.tricuspid.peaks(i);
+%     RAMP.clip_array(19+length(RAMP.mitral.peaks)+i+1) = RAMP.tricuspid.peaks(i);
 % 
 % end
-number2clipboard(gui.clip_array);
+number2clipboard(RAMP.clip_array);
 %filename	mit_max	mit_min	mit_var	mit_max_type	mit_min_type	mit_nr_max_insp	mit_nr_max_exp	mit_nr_min_insp	mit_nr_min_exp	tri_min	tri_max	tri_var	tri_max_type	tri_min_type	tri_nr_max_insp	tri_nr_max_exp	tri_nr_min_insp	tri_nr_min_exp	individual peaks separated by 0																																																																												
 end
 
