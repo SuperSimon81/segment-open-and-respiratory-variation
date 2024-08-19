@@ -41,7 +41,9 @@ end
 function ok = init(no)
 global RAMP DATA SET NO
 RAMP = [];
+RAMP.debug = true;
 ok = false; %inform if unable to launch GUI
+
 
 if nargin<1
     no=NO;
@@ -100,12 +102,17 @@ gui = RAMP.gui;
 RAMP.filename= SET(1).OrigFileName;
 set(gui.fig,'Name',RAMP.filename);
 
+%Enable debug
+if RAMP.debug == true
+    set([gui.handles.panel_debug],'Visible',1); 
+end
+
 %Set some gui colors
 set(findall(gcf, 'Style', 'pushbutton'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
 set(findall(gcf, 'Style', 'checkbox'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
 set(findall(gcf, 'Style', 'text'),'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]);
 set(findall(gcf, 'Style', 'edit'),'BackgroundColor',[1 1 1],'ForegroundColor',[0 0 0]);
-set([gui.handles.panel_visibility, gui.handles.panel_results],'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
+set([gui.handles.panel_visibility, gui.handles.panel_results, gui.handles.panel_debug],'BackgroundColor',[0.9 0.9 0.9],'ForegroundColor',[0 0 0]); 
 set(gcf,'color',[0.9 0.9 0.9]);
 set(gui.handles.result_mitral_variation,'String','asd');
 %Warningmessage, might be needed if compiled
