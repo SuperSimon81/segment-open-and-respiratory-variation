@@ -122,7 +122,7 @@ set(gui.handles.result_mitral_variation,'String','asd');
 colormap(gray);
 
 %Some settings related to ylim and clim
-ymin = -0.4;
+ymin = -0.2;
 ymax = 1;
 RAMP.ymin = ((ymin+2)*512)/4;
 RAMP.ymax = ((ymax+2)*512)/4;
@@ -173,8 +173,8 @@ title(gui.handles.tri_axes,'Tricuspid inflow velocity','FontSize',18,'fontweight
 set(findall(gcf, 'Style', 'checkbox'),'Callback',@checkboxes_callback);
 
 %debug
-%set(gui.handles.button_debug,'Callback',@button_debug_callback);
-%set(gui.handles.button_clipboard,'Callback',@button_clipboard_callback);
+set(gui.handles.button_debug,'Callback',@button_debug_callback);
+set(gui.handles.button_clipboard,'Callback',@button_clipboard_callback);
 
 
 %Draw magnitude image and formatting
@@ -222,26 +222,18 @@ end
 RAMP.splits = splits;
 
 %Find peaks and plot
-[RAMP.mitral.peaks, RAMP.mitral.indices] = find_ewave_peaks(RAMP.mitral.curve,splits);
+[RAMP.mitral.peaks, RAMP.mitral.indices,debug_curve] = find_ewave_peaks(RAMP.mitral.curve,splits);
 
-for i=1:length(RAMP.mitral.peaks)
-    gui.mit_peak(i) = plot(RAMP.mitral.indices(i),256+128*RAMP.mitral.curve(RAMP.mitral.indices(i)),'Marker','o','color','r','MarkerSize',8,'LineWidth',1.5,'Parent',...
-    gui.handles.mit_axes,'UserData',i,'Visible',get(gui.handles.checkbox_peaks,'Value'));
-    set(gui.mit_peak(i),'ButtonDownFcn', @peak_callback)
-    %optional line in mmode for every peak
-    %gui.mmode_lines(i) = plot([RAMP.mitral.indices(i) RAMP.mitral.indices(i)],[0,256],'Parent',gui.handles.mmd_axes,'color','w','LineWidth',2,'LineStyle',':','Visible',get(gui.handles.checkbox_mmode_helplines,'Value'));
-end
+gui.mitral_debug = plot(256+128*debug_curve,'color','r','LineWidth',0.5,'Parent',gui.handles.mit_axes,'PickableParts','none','Visible',get(gui.handles.checkbox_vt_curve,'Value'));
+
+%[RAMP.tricuspid.peaks, RAMP.tricuspid.indices,debug_curve] = find_ewave_peaks(RAMP.tricuspid.curve,splits);
+[RAMP.tricuspid.peaks, RAMP.tricuspid.indices] = copy_peaks(RAMP.mitral.indices,-RAMP.tricuspid.curve);
+gui.tricuspid_debug = plot(256+128*debug_curve,'color','r','LineWidth',0.5,'Parent',gui.handles.tri_axes,'PickableParts','none','Visible',get(gui.handles.checkbox_vt_curve,'Value'));
 
 
+plot_peaks();
 
-[RAMP.tricuspid.peaks, RAMP.tricuspid.indices] = find_ewave_peaks(RAMP.tricuspid.curve,splits);
-%[RAMP.tricuspid.peaks, RAMP.tricuspid.indices] = copy_peaks(RAMP.mitral.indices,-RAMP.tricuspid.curve);
 
-for i=1:length(RAMP.tricuspid.peaks)
-    gui.tri_peak(i) = plot(RAMP.tricuspid.indices(i),256+128*RAMP.tricuspid.curve(RAMP.tricuspid.indices(i)),'Marker','o','color','r','MarkerSize',8,'LineWidth',1.5,'Parent',...
-        gui.handles.tri_axes,'UserData',i,'Visible',get(gui.handles.checkbox_peaks,'Value'));
-
-end
 
 set([gui.handles.mit_axes gui.handles.tri_axes],'ylim',[RAMP.ymin RAMP.ymax]);
 [RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
@@ -309,7 +301,8 @@ for rloop = 1:numrois
             else
                 correction = SET(nop).Flow.PhaseCorr(:,:,1,RAMP.Roi(rloop).Z);
             end
-            veldata = RAMP.Roi(rloop).Sign * (temp - 0.5 - correction) * 2 * SET(nop).VENC;
+            veldata = RAMP.Roi(rloop).Sign * (temp - 0.5 - correction) *2* SET(nop).VENC;
+            %old_veldata = (temp-0.5-SET(nop).Flow.PhaseCorr(:,:,1,SET(nom).Roi(rois2take(rloop)).Z))*2*SET(nop).VENC
         end
 
         RAMP.velocity_unmasked(:,:,tloop) = veldata;
@@ -390,7 +383,7 @@ for i=1:size(velocity,1)
 end
 end
 
-function [peaks, inds] = find_ewave_peaks(velocity, splits)
+function [peaks, inds,debug_curve] = find_ewave_peaks(velocity, splits)
 % This function is used to identify the peaks of the ewave from a velocity signal.
 % Inputs:
 %   velocity - The input signal array from which peaks need to be identified.
@@ -408,7 +401,12 @@ for i = 1:length(velocity)
 end
 
 % Calculate the threshold as the mean of the modified velocity plus an offset.
-m = mean(velocity);
+
+
+
+
+m = mean(velocity) + std(velocity);
+
 
 % Adjust the velocity such that all values below the threshold m are set to m.
 for i = 1:length(velocity)
@@ -417,9 +415,13 @@ for i = 1:length(velocity)
     end
 end
 
+debug_curve= velocity;
+
+
 % Split the velocity into segments according to the indices provided in splits.
 for i = 1:length(splits) - 1
     ewaves{i} = velocity(splits(i):splits(i + 1));
+    
 end
 
 % Initialize arrays to store the peaks and their corresponding indices.
@@ -432,7 +434,7 @@ for i = 1:size(ewaves, 2)
     t = splits(i); % Starting index of the current segment.
 
     % Find peaks in the current segment using the findpeaks function.
-    [pks, locs, w, p] = findpeaks(ewaves{i});%,'MinPeakHeight',m);
+    [pks, locs, w, p] = findpeaks(ewaves{i});
 
     if isempty(pks) % If no peaks are found,
         peaks(i) = -1; % assign -1 to indicate no peak.
@@ -460,7 +462,7 @@ end
 function [peaks, inds] = copy_peaks(input_inds,input)
 inds = input_inds;
 input=-input; %because tricuspid
-steps_to_check = 2;
+steps_to_check = 3;
 for i=1:length(inds)
     
         [peak, ind] = findpeaks(input(inds(i)-steps_to_check:inds(i)+steps_to_check));
@@ -489,7 +491,7 @@ function splits = segment_heart_cycles(velocity, min_peak_distance)
 global RAMP 
 gui = RAMP.gui; % Access the GUI component from the global RAMP structure.
 
-neg_velocity = sum(maxk(velocity, 25, 2), 2) / 25; % Smoothes the lowest 25 velocity values by averaging them.
+neg_velocity = sum(maxk(velocity, 5, 2), 2) / 5; % Smoothes the lowest 25 velocity values by averaging them.
 %neg_velocity = neg_velocity(neg_velocity < 0.5); % Retain only values of the smoothed array that are less than 0.5.
 
 % Optionally, uncomment the following line to plot the negative velocity for debugging purposes.
@@ -502,7 +504,7 @@ neg_velocity = filter(B, 1, neg_velocity); % Apply the moving average filter to 
 % Find peaks in the negative of the smoothed negative velocity signal.
 [peak, loc,w,p] = findpeaks(neg_velocity, 'MinPeakProminence',0.01,'MinPeakDistance', min_peak_distance); % Detect peaks, treating negative troughs as peaks.
 % Adjust peak locations to account for potential lead-in effect of filtering and other processing steps.
-splits = loc - 3; % Subtract 3 from the locations to compensate for any delays introduced by processing.
+splits = loc - 2; % Subtract 3 from the locations to compensate for any delays introduced by processing.
 %splits = splits(splits>3);
 end
 
@@ -747,14 +749,62 @@ frame = getframe(RAMP.gui.fig);
 % Convert the frame to an image
 image = frame2im(frame);
 
-target = '/Users/simon/Documents/SoftwareArticleRAMP/analys20240810/';
+target = '/Users/simon/Documents/SoftwareArticleRAMP/Analys20240810/screenshots/';
 fullFilePath = [target, RAMP.filename,'.png']
 % Save the image to a file
 imwrite(image, fullFilePath);
 
 end
 
-function peak_callback(h,~)
+function peak_callback(h, ~)
+    global RAMP
+    gui = RAMP.gui;
+    f = ancestor(h, 'figure');
+    switch f.SelectionType
+        case 'normal'   % Left mouse button
+            disp('Left click');
+            
+        case 'alt'      % Right mouse button
+            disp('Right click');
+            k = find(RAMP.mitral.indices == round(h.XData)); % Find the index of the peak to be deleted
+            if ~isempty(k)
+                % Delete the peak and its index for mitral and tricuspid
+                
+                  RAMP.mitral.peaks = [RAMP.mitral.peaks(1:k-1), RAMP.mitral.peaks(k+1:end)];
+            RAMP.mitral.indices = [RAMP.mitral.indices(1:k-1), RAMP.mitral.indices(k+1:end)];
+            RAMP.tricuspid.peaks = [RAMP.tricuspid.peaks(1:k-1), RAMP.tricuspid.peaks(k+1:end)];
+            RAMP.tricuspid.indices = [RAMP.tricuspid.indices(1:k-1), RAMP.tricuspid.indices(k+1:end)];
+         
+                
+                
+                %RAMP.mitral.peaks(k) = [];
+                %RAMP.mitral.indices(k) = [];
+                %RAMP.tricuspid.peaks(k) = [];
+                %RAMP.tricuspid.indices(k) = [];
+                
+                % Re-index the peaks and update the plot
+                delete(gui.mit_peak(k));
+                delete(gui.tri_peak(k));
+                
+                % Re-draw the peaks with updated indices
+                plot_peaks();
+
+                % Recalculate max/min values after deletion
+                [RAMP.mitral.max_val, RAMP.mitral.min_val, RAMP.mitral.max_ind, RAMP.mitral.min_ind] = get_maxmin(RAMP.mitral.peaks);
+                [RAMP.tricuspid.max_val, RAMP.tricuspid.min_val, RAMP.tricuspid.max_ind, RAMP.tricuspid.min_ind] = get_maxmin(RAMP.tricuspid.peaks);
+
+                % Update the marker sizes to reflect changes
+                update_marker_size();
+                
+                % Update the GUI table and M-mode lines
+                update_table();
+                update_mmode_lines();
+            end
+    end
+end
+
+
+function peak_callback2(h,~)
 global RAMP
 gui = RAMP.gui;
 f = ancestor(h, 'figure');
@@ -773,22 +823,13 @@ f = ancestor(h, 'figure');
             
             
             
-             delete(gui.mit_peak(:));
-             delete(gui.tri_peak(:));
-        
-        for i=1:length(RAMP.mitral.peaks)
-            gui.mit_peak(i) = plot(RAMP.mitral.indices(i),256+128*RAMP.mitral.curve(RAMP.mitral.indices(i)),'Marker','o','color','r','MarkerSize',8,'LineWidth',1,'Parent',...
-                gui.handles.mit_axes,'UserData',i);
-            %gui.mit_peak(i) = plot(RAMP.mitral.indices(i),RAMP.mitral.peaks(i)*255+1,'Marker','o','color','r','MarkerSize',5,'MarkerFaceColor','r','LineWidth',1,'Parent',...
-                
-
-        end
+             disp(length(gui.mit_peak));
+             delete(gui.mit_peak);
+             delete(gui.tri_peak);
+            plot_peaks();
 
         
-        for i=1:length(RAMP.tricuspid.peaks)
-            gui.tri_peak(i) = plot(RAMP.tricuspid.indices(i),256+128*RAMP.tricuspid.peaks(i),'Marker','o','color','b','MarkerSize',8,'LineWidth',1,'Parent',...
-                gui.handles.tri_axes,'UserData',i);
-        end      
+   
                 
          [RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
         [RAMP.tricuspid.max_val,RAMP.tricuspid.min_val,RAMP.tricuspid.max_ind,RAMP.tricuspid.min_ind]=get_maxmin(RAMP.tricuspid.peaks);
@@ -799,7 +840,7 @@ f = ancestor(h, 'figure');
         set(gui.tri_peak(RAMP.tricuspid.min_ind),'MarkerSize',12);
        
         update_table();
-            
+        disp(length(gui.mit_peak));
     end
 end
 
@@ -815,7 +856,7 @@ gui = RAMP.gui;
             set(gcf,"WindowButtonUpFcn", @click)
         case 'alt'      % Right mouse button
             %debug
-            disp('Right click');
+            %disp('Right click');
     end
     
     function mouseMove (object, eventdata)
@@ -833,24 +874,15 @@ gui = RAMP.gui;
         RAMP.splits(i) = x(1);
 
         %Find peaks and plot
-        [RAMP.mitral.peaks RAMP.mitral.indices] = find_ewave_peaks(RAMP.mitral.curve,round(RAMP.splits));
+        [RAMP.mitral.peaks RAMP.mitral.indices,debug_curve] = find_ewave_peaks(RAMP.mitral.curve,round(RAMP.splits));
+        [RAMP.tricuspid.peaks RAMP.tricuspid.indices,debug_curve] = find_ewave_peaks(RAMP.tricuspid.curve,round(RAMP.splits));
+       
+        delete(gui.mit_peak);
+        delete(gui.tri_peak);
         
-        delete(gui.mit_peak(:));
-        delete(gui.tri_peak(:));
         
-        for i=1:length(RAMP.mitral.peaks)
-            gui.mit_peak(i) = plot(RAMP.mitral.indices(i),256+128*RAMP.mitral.curve(RAMP.mitral.indices(i)),'Marker','o','color','r','MarkerSize',8,'LineWidth',1.5,'Parent',...
-                gui.handles.mit_axes,'UserData',i);
-            %gui.mit_peak(i) = plot(RAMP.mitral.indices(i),RAMP.mitral.peaks(i)*255+1,'Marker','o','color','r','MarkerSize',5,'MarkerFaceColor','r','LineWidth',1,'Parent',...
-                
 
-        end
-
-        [RAMP.tricuspid.peaks RAMP.tricuspid.indices] = find_ewave_peaks(RAMP.tricuspid.curve,round(RAMP.splits));
-        for i=1:length(RAMP.tricuspid.peaks)
-            gui.tri_peak(i) = plot(RAMP.tricuspid.indices(i),256+128*RAMP.tricuspid.peaks(i),'Marker','o','color','r','MarkerSize',8,'LineWidth',1.5,'Parent',...
-                gui.handles.tri_axes,'UserData',i);
-        end
+        plot_peaks();
 
         %    set([gui.handles.mit_axes gui.handles.tri_axes],'ylim',[ymin ymax]);
         [RAMP.mitral.max_val,RAMP.mitral.min_val,RAMP.mitral.max_ind,RAMP.mitral.min_ind]=get_maxmin(RAMP.mitral.peaks);
@@ -866,6 +898,33 @@ gui = RAMP.gui;
     end
 
 end
+
+
+function plot_peaks()
+global RAMP
+
+gui = RAMP.gui;
+
+gui.mit_peak = gobjects(1, length(RAMP.mitral.peaks));
+
+for i=1:length(RAMP.mitral.peaks)
+    gui.mit_peak(i) = plot(RAMP.mitral.indices(i),256+128*RAMP.mitral.curve(RAMP.mitral.indices(i)),'Marker','o','color','r','MarkerSize',8,'LineWidth',1.5,'Parent',...
+        gui.handles.mit_axes,'UserData',i,'Visible',get(gui.handles.checkbox_peaks,'Value'));
+    set(gui.mit_peak(i),'ButtonDownFcn', @peak_callback)
+end
+
+gui.tri_peak = gobjects(1, length(RAMP.tricuspid.peaks));
+
+for i=1:length(RAMP.tricuspid.peaks)
+    gui.tri_peak(i) = plot(RAMP.tricuspid.indices(i),256+128*RAMP.tricuspid.curve(RAMP.tricuspid.indices(i)),'Marker','o','color','r','MarkerSize',8,'LineWidth',1.5,'Parent',...
+        gui.handles.tri_axes,'UserData',i,'Visible',get(gui.handles.checkbox_peaks,'Value'));
+    set(gui.tri_peak(i),'ButtonDownFcn', @peak_callback)
+end
+
+
+end
+    
+
 
 function update_marker_size()
 global RAMP
@@ -887,7 +946,90 @@ set([gui.mit_peak(RAMP.mitral.max_ind), gui.mit_peak(RAMP.mitral.min_ind), gui.t
 
 end
 
-function curve_click_callback(gcbo,event)
+
+function curve3_click_callback(gcbo, event)
+    global RAMP
+    gui = RAMP.gui;
+    x = round(event.IntersectionPoint(1, 1));  % The x-coordinate where the click occurred
+
+    % Calculate the distances between the click location and each mitral peak index
+    dist_to_mitral = abs(RAMP.mitral.indices - x);
+
+    % Find the index of the closest peak
+    [~, ind] = min(dist_to_mitral);
+    
+    % Ensure the click is within reasonable proximity of the nearest peak (optional)
+    if min(dist_to_mitral) < 5  % Set an appropriate threshold for selecting a peak
+        % Update the mitral peak's position
+        if gcbo == gui.handles.mit_axes
+            RAMP.mitral.indices(ind) = x;
+            RAMP.mitral.peaks(ind) = RAMP.mitral.curve(x);
+            set(gui.mit_peak(ind), 'XData', [x x]);
+            set(gui.mit_peak(ind), 'YData', [256 + 128 * RAMP.mitral.peaks(ind) 256 + 128 * RAMP.mitral.peaks(ind)]);
+        end
+
+        % Update the tricuspid peak's position if the click occurred in the tricuspid axes
+        if gcbo == gui.handles.tri_axes
+            RAMP.tricuspid.indices(ind) = x;
+            RAMP.tricuspid.peaks(ind) = RAMP.tricuspid.curve(x);
+            set(gui.tri_peak(ind), 'XData', [x x]);
+            set(gui.tri_peak(ind), 'YData', [256 + 128 * RAMP.tricuspid.peaks(ind) 256 + 128 * RAMP.tricuspid.peaks(ind)]);
+        end
+    end
+
+    % Recalculate max/min values after the update
+    [RAMP.mitral.max_val, RAMP.mitral.min_val, RAMP.mitral.max_ind, RAMP.mitral.min_ind] = get_maxmin(RAMP.mitral.peaks);
+    [RAMP.tricuspid.max_val, RAMP.tricuspid.min_val, RAMP.tricuspid.max_ind, RAMP.tricuspid.min_ind] = get_maxmin(RAMP.tricuspid.peaks);
+
+    % Update the GUI to reflect the new peak sizes and positions
+    update_marker_size();
+    update_mmode_lines();
+    update_table();
+end
+
+
+
+
+
+function curve_click_callback(gcbo, event)
+    global RAMP
+    gui = RAMP.gui;
+    x = round(event.IntersectionPoint(1, 1));
+
+    % Calculate distances to find the closest peak segment
+    dist = RAMP.splits - x;
+    dist(dist < 0) = NaN;
+    [~, ind] = min(dist);
+    ind = ind - 1; % Adjust for the correct segment
+    
+    if x > RAMP.splits(1) && x < RAMP.splits(end)
+        if gcbo == gui.handles.mit_axes
+            RAMP.mitral.indices(ind) = x;
+            RAMP.mitral.peaks(ind) = RAMP.mitral.curve(x);
+            set(gui.mit_peak(ind), 'XData', [x x]);
+            set(gui.mit_peak(ind), 'YData', [256 + 128 * RAMP.mitral.peaks(ind) 256 + 128 * RAMP.mitral.peaks(ind)]);
+        elseif gcbo == gui.handles.tri_axes
+            RAMP.tricuspid.indices(ind) = x;
+            RAMP.tricuspid.peaks(ind) = RAMP.tricuspid.curve(x);
+            set(gui.tri_peak(ind), 'XData', [x x]);
+            set(gui.tri_peak(ind), 'YData', [256 + 128 * RAMP.tricuspid.peaks(ind) 256 + 128 * RAMP.tricuspid.peaks(ind)]);
+        end
+    end
+
+    % Recalculate max/min values and update accordingly
+    [RAMP.mitral.max_val, RAMP.mitral.min_val, RAMP.mitral.max_ind, RAMP.mitral.min_ind] = get_maxmin(RAMP.mitral.peaks);
+    [RAMP.tricuspid.max_val, RAMP.tricuspid.min_val, RAMP.tricuspid.max_ind, RAMP.tricuspid.min_ind] = get_maxmin(RAMP.tricuspid.peaks);
+
+    % Update the marker sizes, M-mode lines, and table
+    update_marker_size();
+    update_mmode_lines();
+    update_table();
+end
+
+
+
+
+function curve_click_callback2(gcbo,event)
 
 global DATA RAMP
 gui = RAMP.gui;
@@ -934,11 +1076,13 @@ end
 function button_clipboard_callback(varargin)
 
 global RAMP
-gui = RAMP.gui;
 
-checkboxes = findall(gcf,'Style','checkbox');
 
-set(checkboxes,'Value',0);
+if RAMP.debug == true
+    set([gui.handles.panel_debug],'Visible',0); 
+else
+    set([gui.handles.panel_debug],'Visible',1); 
+end
 
 
 
@@ -960,7 +1104,8 @@ switch varargin{1}.Tag
        
     case 'checkbox_resp_curve'
         
-        %set(gui.l(:),'Visible',get(varargin{1},'Value'));
+        set(gui.tricuspid_debug,'Visible',get(varargin{1},'Value'));
+        set(gui.mitral_debug,'Visible',get(varargin{1},'Value'));
     
         %lines = findobj(gui.handles.mmd_axes, 'Type', 'line','-and','LineWidth',1.5);
         %set(lines,'Visible',get(varargin{1},'Value'));
@@ -988,7 +1133,7 @@ set(RAMP.overview_line,'Xdata',[t t]);
 
 %[RAMP.exploc RAMP.insploc RAMP.inflections RAMP.respiration] = calculate_respiratory_curve(y);
 
-update_table();
+
 %uistack(RAMP.overview_line,'top');
 end
 
@@ -1045,19 +1190,19 @@ tri_min = RAMP.tricuspid.min_val;
 %mitral
 RAMP.clip_array(2)=mit_max;
 RAMP.clip_array(3)=mit_min;
-RAMP.clip_array(4)=round((mit_max-mit_min)/mit_max*100);
+RAMP.clip_array(4)=(mit_max-mit_min)/mit_max;
 RAMP.clip_array(5)=tri_max;
 RAMP.clip_array(6)=tri_min;
-RAMP.clip_array(7)=round((tri_max-tri_min)/tri_max*100);
+RAMP.clip_array(7)=(tri_max-tri_min)/tri_max;
 
 
 set(gui.handles.result_mitral_vmax,'String',sprintf('%.2f',mit_max));
 set(gui.handles.result_mitral_vmin,'String',sprintf('%.2f',mit_min));
-set(gui.handles.result_mitral_variation,'String',sprintf('%d%%',RAMP.clip_array(4)));
+set(gui.handles.result_mitral_variation,'String',sprintf('%d%%',round(RAMP.clip_array(4)*100)));
 
 set(gui.handles.result_tricuspid_vmax,'String',sprintf('%.2f',tri_max));
 set(gui.handles.result_tricuspid_vmin,'String',sprintf('%.2f',tri_min));
-set(gui.handles.result_tricuspid_variation,'String',sprintf('%d%%',RAMP.clip_array(7)));
+set(gui.handles.result_tricuspid_variation,'String',sprintf('%d%%',round(RAMP.clip_array(7)*100)));
 
 
 %gui.handles.result_mitral_variation = sprintf('%.2f',RAMP.clip_array(4));
