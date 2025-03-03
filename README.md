@@ -1,6 +1,6 @@
 # segment-open -- Segment source distribution
 
-This is a fork of Segment-open containing the Mitral and Tricuspid Respiratory Variation plugin
+This is a fork of Segment-open containing the Mitral and Tricuspid Respiratory Variation plugin. This repository also includes the R-notebook and data used for all statistical analysis and generation of figures in the paper Respiratory variation in mitral and tricuspid inflow velocity using real-time phase-contrast cardiovascular magnetic resonance - normal values and reproducibility. Link will be provided once published.
 
 ![lvimage](example.jpg)
 
