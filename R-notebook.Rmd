@@ -1,0 +1,290 @@
+---
+title: "R-notebook for statistics for the scientific paper Respiratory variation in mitral and tricuspid inflow velocity using real-time phase-contrast cardiovascular magnetic resonance - normal values and reproducibility
+
+pat is the dataset with patient data
+io is the dataset with inter-observer data
+trt is the dataset with test-retest data
+column_headers contains descriptions of the column headers in the three datasets
+"
+
+output: html_notebook
+---
+
+Install dependencies
+
+```{r}
+install.packages("blandr")
+install.packages("irr")
+
+library(irr)
+library(blandr)
+```
+```{r}
+mean(pat$mit_var_def_1)
+sd(pat$mit_var_def_1)
+mean(pat$tri_var_def_1)
+sd(pat$tri_var_def_1)
+```
+Normality checks for patients, results indicate that they are normally distributed
+```{r}
+shapiro.test(pat$mit_var_def_1)
+shapiro.test(pat$tri_var_def_1)
+```
+```{r}
+mean(trt$s1mvar)
+sd(trt$s1mvar)
+mean(trt$s1tvar)
+sd(trt$s1tvar)
+```
+Normality checks for test-retest and inter-observer, results indicate that they are normally distributed
+```{r}
+shapiro.test(trt$s1mvar)
+shapiro.test(trt$s1tvar)
+shapiro.test(io$o1mvar)
+shapiro.test(io$o1tvar)
+```
+
+
+T-test to check if there is any difference between patient and test-retest session 1 results
+```{r}
+t.test(pat$mit_var_def_1,trt$s1mvar)
+t.test(pat$tri_var_def_1,trt$s1tvar)
+```
+Calculations to get differences and means to use in the Bland-Altman plots
+
+```{r}
+trt$mvar_diff <- trt$s1mvar-trt$s2mvar
+trt$mvar_mean <- (trt$s1mvar+trt$s2mvar)/2
+
+trt$tvar_diff <- trt$s1tvar-trt$s2tvar
+trt$tvar_mean <- (trt$s1tvar+trt$s2tvar)/2
+
+io$mvar_diff <- io$o1mvar-io$o2mvar
+io$mvar_mean <- (io$o1mvar+io$o2mvar)/2
+
+io$tvar_diff <- io$o1tvar-io$o2tvar
+io$tvar_mean <- (io$o1tvar+io$o2tvar)/2
+```
+
+Normality tests for test-retest and means and SD of the difference
+```{r}
+
+shapiro.test(trt$mvar_diff)
+shapiro.test(trt$tvar_diff)
+
+mean(trt$mvar_diff)
+sd(trt$mvar_diff)
+
+mean(trt$tvar_diff)
+sd(trt$tvar_diff)
+
+```
+
+```{r}
+
+shapiro.test(io$mvar_diff)
+shapiro.test(io$tvar_diff)
+
+median(io$mvar_diff)
+quantile(io$mvar_diff*100, probs = c(0.25, 0.75))
+
+median(io$tvar_diff)
+quantile(io$tvar_diff*100, probs = c(0.25, 0.75))
+
+```
+Intraclass coefficients for comparisons of test-retest and inter-observer
+```{r}
+icc(trt[, c("s1mvar", "s2mvar")],"twoway","agreement","single")
+icc(trt[, c("s1tvar", "s2tvar")],"twoway","agreement","single")
+
+icc(io[, c("o1mvar", "o2mvar")],"twoway","agreement","single")
+icc(io[, c("o1tvar", "o2tvar")],"twoway","agreement","single")
+
+```
+Check some max and mins for the plot
+```{r}
+max(trt$mvar_diff*100)
+max(trt$mvar_mean*100)
+min(trt$mvar_diff*100)
+min(trt$mvar_mean*100)
+
+max(trt$tvar_diff*100)
+max(trt$tvar_mean*100)
+min(trt$tvar_diff*100)
+min(trt$tvar_mean*100)
+```
+
+Check some max and mins for the plot
+```{r}
+max(io$mvar_diff*100)
+max(io$mvar_mean*100)
+min(io$mvar_diff*100)
+min(io$mvar_mean*100)
+max(io$tvar_diff*100)
+max(io$tvar_mean*100)
+min(io$tvar_diff*100)
+min(io$tvar_mean*100)
+```
+Bland-Altman 1986 limits of agreement for test-retest and inter-observer
+```{r}
+trt_m_blandr <- blandr.statistics(trt$s1mvar, trt$s2mvar, sig.level = 0.95, LoA.mode = 1)
+trt_t_blandr <- blandr.statistics(trt$s1tvar, trt$s2tvar, sig.level = 0.95, LoA.mode = 1)
+io_m_blandr <- blandr.statistics(io$o1mvar, io$o2mvar, sig.level = 0.95, LoA.mode = 1)
+io_t_blandr <- blandr.statistics(io$o1tvar, io$o2tvar, sig.level = 0.95, LoA.mode = 1)
+
+```
+
+Bland-Altman plot for test-rest and inter-observer mitral and tricuspid
+```{r}
+library(ggplot2)
+library(cowplot)
+
+a <- c(14)
+b <- c(10)
+c <- c(10)
+
+xlim <- c(10,65)
+ylim <- c(-12.5,12.5)
+offset <- 1.6
+xpos <- 59.5
+# Plot 1: Test-retest for mitral
+p1 <- ggplot(trt, aes(x = mvar_mean*100, y = mvar_diff*100)) +
+  geom_point(size=1) +
+  geom_hline(yintercept = 0,linetype="dashed") +
+  geom_hline(yintercept = trt_m_blandr$bias*100) +
+  geom_hline(yintercept = trt_m_blandr$upperLOA*100, color = "red", linetype="dashed") +
+  geom_hline(yintercept = trt_m_blandr$lowerLOA*100, color = "red", linetype="dashed") +
+  ggtitle("A") +
+  ylab("Mitral respiratory variation\nsession 1 minus session 2\n(%-points)") +
+  xlab("Mean (%-points)") +
+  annotate("text", 
+         x = xpos, 
+         y = trt_m_blandr$upperLOA * 100 + offset, 
+         label = sprintf("+1.96SD %.1f", trt_m_blandr$upperLOA * 100), 
+         size = 3, 
+         color = "red") + 
+   annotate("text", 
+         x = xpos, 
+         y = trt_m_blandr$lowerLOA * 100 + offset, 
+         label = sprintf("-1.96SD %.1f", trt_m_blandr$lowerLOA * 100), 
+         size = 3, 
+         color = "red") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(size=a, face = "bold"),
+        axis.title = element_text(size=b),
+        axis.text = element_text(size=c),
+        axis.line = element_line(color = "black"),  # Adds axis lines
+        axis.ticks = element_line(color = "black")) +  # Adds axis ticks
+  coord_fixed(ratio = 1) +
+  xlim(xlim) +
+  ylim(ylim)
+
+# Plot 2: Test-retest for tricuspid
+p2 <- ggplot(trt, aes(x = tvar_mean*100, y = tvar_diff*100)) +
+  geom_point(size=1) +
+  geom_hline(yintercept = 0,linetype="dashed") +
+  geom_hline(yintercept = trt_t_blandr$bias*100) +
+  geom_hline(yintercept = trt_t_blandr$upperLOA*100, color = "red", linetype="dashed") +
+  geom_hline(yintercept = trt_t_blandr$lowerLOA*100, color = "red", linetype="dashed") +
+  ggtitle("B") +
+  ylab("Tricuspid respiratory variation\nsession 1 minus session 2\n(%-points)") +
+  xlab("Mean (%-points)") +
+  annotate("text", 
+         x = xpos, 
+         y = trt_t_blandr$upperLOA * 100 + offset, 
+         label = sprintf("+1.96SD %.1f", trt_t_blandr$upperLOA * 100), 
+         size = 3, 
+         color = "red") + 
+   annotate("text", 
+         x = xpos, 
+         y = trt_t_blandr$lowerLOA * 100 + offset, 
+         label = sprintf("-1.96SD %.1f", trt_t_blandr$lowerLOA * 100), 
+         size = 3, 
+         color = "red") + 
+
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(size=a, face = "bold"),
+        axis.title = element_text(size=b),
+        axis.text = element_text(size=c),
+        axis.line = element_line(color = "black"),  # Adds axis lines
+        axis.ticks = element_line(color = "black")) +  # Adds axis ticks
+  coord_fixed(ratio = 1) +
+  xlim(xlim) +
+  ylim(ylim)
+
+# Plot 3: Inter-observer for mitral
+p3 <- ggplot(io, aes(x = mvar_mean*100, y = mvar_diff*100)) +
+  geom_point(size=1) +
+    geom_hline(yintercept = 0,linetype="dashed") +
+  geom_hline(yintercept = io_m_blandr$bias*100) +
+  geom_hline(yintercept = io_m_blandr$upperLOA*100, color = "red", linetype="dashed") +
+  geom_hline(yintercept = io_m_blandr$lowerLOA*100, color = "red", linetype="dashed") +
+  ggtitle("C") +
+  ylab("Mitral respiratory variation\nobserver 1 minus observer 2\n(%-points)") +
+  xlab("Mean (%-points)") +
+  annotate("text", 
+         x = xpos, 
+         y = io_m_blandr$upperLOA * 100 + offset, 
+         label = sprintf("+1.96SD %.1f", io_m_blandr$upperLOA * 100), 
+         size = 3, 
+         color = "red") + 
+   annotate("text", 
+         x = xpos, 
+         y = io_m_blandr$lowerLOA * 100 + offset, 
+         label = sprintf("-1.96SD %.1f", io_m_blandr$lowerLOA * 100), 
+         size = 3, 
+         color = "red") + 
+  
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(size=a, face = "bold"),
+        axis.title = element_text(size=b),
+        axis.text = element_text(size=c),
+        axis.line = element_line(color = "black"),  # Adds axis lines
+        axis.ticks = element_line(color = "black")) +  # Adds axis ticks
+  coord_fixed(ratio = 1) +
+  xlim(xlim) +
+  ylim(ylim)
+
+# Plot 4: Inter-observer for tricuspid
+p4 <- ggplot(io, aes(x = tvar_mean*100, y = tvar_diff*100)) +
+  geom_point(size=1) +
+    geom_hline(yintercept = 0,linetype="dashed") +
+  geom_hline(yintercept = io_t_blandr$bias*100) +
+  geom_hline(yintercept = io_t_blandr$upperLOA*100, color = "red", linetype="dashed") +
+  geom_hline(yintercept = io_t_blandr$lowerLOA*100, color = "red", linetype="dashed") +
+  ggtitle("D") +
+  ylab("Tricuspid respiratory variation\nobserver 1 minus observer 2\n(%-points)") +
+  xlab("Mean (%-points)") +
+  annotate("text", 
+         x = xpos, 
+         y = io_t_blandr$upperLOA * 100 + offset, 
+         label = sprintf("+1.96SD %.1f", io_t_blandr$upperLOA * 100), 
+         size = 3, 
+         color = "red") + 
+   annotate("text", 
+         x = xpos, 
+         y = io_t_blandr$lowerLOA * 100 + offset, 
+         label = sprintf("-1.96SD %.1f", io_t_blandr$lowerLOA * 100), 
+         size = 3, 
+         color = "red") + 
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        plot.title = element_text(size=a, face = "bold"),
+        axis.title = element_text(size=b),
+        axis.text = element_text(size=c),
+        axis.line = element_line(color = "black"),  # Adds axis lines
+        axis.ticks = element_line(color = "black")) +  # Adds axis ticks
+  coord_fixed(ratio = 1) +
+  xlim(xlim) +
+  ylim(ylim)
+
+# Arrange the plots in a 2x2 grid
+plot_grid(p1, p2, p3, p4, ncol = 2, align = "v")
+
+```
+
+
+
